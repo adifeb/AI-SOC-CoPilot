@@ -1,0 +1,5 @@
+# AI SOC CoPilot dependencies
+# All other imports (csv, re, json, html, argparse, dataclasses, etc.)
+# are part of the Python 3 standard library.
+
+requests>=2.25.0

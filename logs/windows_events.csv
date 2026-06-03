@@ -1,0 +1,11 @@
+timestamp,event_id,source,user,description,severity
+2026-05-31T15:30:05Z,4625,DC1,Administrator,Failed logon for Administrator from source host WEBSRV-01 (10.0.0.55) Logon Type 3,high
+2026-05-31T15:30:22Z,4625,DC1,Administrator,Failed logon for Administrator from source host WEBSRV-01 (10.0.0.55) Logon Type 3,high
+2026-05-31T15:31:00Z,4624,DC1,Administrator,Successful logon for Administrator from WEBSRV-01 (10.0.0.55) Logon Type 3,medium
+2026-06-01T22:35:14Z,4688,DC1,Administrator,Process creation: powershell.exe -enc SQBFAFgA spawned by services.exe,high
+2026-06-01T22:42:30Z,4688,DC1,Administrator,Process creation: cmd.exe /c net user svc_backup P@ssw0rd! /add,high
+2026-06-02T01:50:09Z,4720,DC1,Administrator,Local user account created: Username=svc_backup,high
+2026-06-02T01:52:41Z,4732,DC1,Administrator,Member added to security-enabled local group Administrators Member=svc_backup,high
+2026-06-02T02:00:18Z,4672,DC1,svc_backup,Special privileges assigned to new logon for svc_backup,high
+2026-06-02T02:10:47Z,1102,DC1,svc_backup,The audit log was cleared by user svc_backup,critical
+2026-06-02T02:12:03Z,4688,DC1,svc_backup,Process creation: vssadmin.exe delete shadows /all /quiet,critical

