@@ -7,25 +7,16 @@
 
 ---
 
-## 1. Problem Statement
-
-Security Operations Center (SOC) analysts are flooded with raw log data from
-many systems — endpoints, servers, web applications — each in a different
-format. Turning that noise into an understanding of *what happened*, *how bad
-it is*, and *what to do next* is slow, manual, and expertise-heavy.
-
 **AI SOC CoPilot** is a command-line tool that automates the first-pass triage
-of a security incident. It ingests heterogeneous security logs, groups them
-into alerts, uses a Large Language Model (LLM) to reason about the activity,
-maps it to the MITRE ATT&CK framework, assesses the threat, recommends triage
+of a security incident. It ingests security logs, groups them into alerts, 
+uses a Large Language Model (LLM) to reason about the activity,maps 
+it to the MITRE ATT&CK framework, assesses the threat, recommends triage
 actions, and produces a professional incident report — entirely on a local
 model with no external API and no cost.
 
 ---
 
-## 2. Goals and Non-Goals
-
-### 2.1 Goals (in scope)
+## 1. Goals 
 
 - Ingest sample security logs from multiple formats (Windows Event Logs,
   Linux syslog, Apache access logs).
@@ -36,17 +27,8 @@ model with no external API and no cost.
 - Generate an incident report in multiple formats (console, TXT, JSON, HTML).
 - Run on Python with a **local** LLM via Ollama — offline, no API cost.
 
-### 2.2 Non-Goals (explicitly out of scope)
 
-- Not a real-time / streaming detection system — it analyzes a static batch.
-- Not a live web dashboard — the report is a self-contained document.
-- Not a SIEM replacement — no indexing, search, or long-term storage.
-- No automated response/remediation — it *recommends*, it does not *act*.
-- No multi-user, auth, or persistence layer.
-
----
-
-## 3. Functional Requirements
+## 2. Functional Requirements
 
 | ID | Requirement | Acceptance criteria |
 |----|-------------|---------------------|
@@ -60,7 +42,7 @@ model with no external API and no cost.
 
 ---
 
-## 4. Non-Functional Requirements
+## 3. Non-Functional Requirements
 
 - **Local-only / zero cost** — all inference runs on a local Ollama model; no
   external API calls, no data leaves the machine.
@@ -77,9 +59,9 @@ model with no external API and no cost.
 
 ---
 
-## 5. System Architecture
+## 4. System Architecture
 
-### 5.1 Pipeline overview
+### 4.1 Pipeline overview
 
 The tool is a pipeline. Raw log files enter one end; a finished incident report
 exits the other.
@@ -95,7 +77,7 @@ exits the other.
 
 Orchestrated by `soc_copilot.py`; entry point is `main.py` (CLI).
 
-### 5.2 Two-layer design (the core principle)
+### 4.2 Two-layer design (the core principle)
 
 The system deliberately separates two kinds of work:
 
@@ -112,7 +94,7 @@ There is intentionally **no fallback intelligence layer** (no keyword-based
 MITRE mapping, no canned summaries). The model is a hard dependency; the tool's
 purpose is to be genuinely AI-assisted.
 
-### 5.3 Components
+### 4.3 Components
 
 | File | Responsibility | Layer |
 |------|----------------|-------|
@@ -128,9 +110,9 @@ purpose is to be genuinely AI-assisted.
 
 ---
 
-## 6. Data Flow and Models
+## 5. Data Flow and Models
 
-### 6.1 Transformation chain
+### 5.1 Transformation chain
 
 ```
 raw log lines
@@ -152,7 +134,7 @@ report.{html,txt,json}     the deliverable
 ingestion depends only on it, not on how the logs were parsed. This makes the
 ingestion layer swappable without touching analysis or reporting.
 
-### 6.2 SecurityEvent schema
+### 5.2 SecurityEvent schema
 
 | Field | Description |
 |-------|-------------|
@@ -165,7 +147,7 @@ ingestion layer swappable without touching analysis or reporting.
 | `log_source` | Origin format: `windows` / `syslog` / `apache` |
 | `dt` | Normalized timestamp (naive UTC `datetime`) for cross-format chronological sorting |
 
-### 6.3 The 5-turn LLM analysis
+### 5.3 The 5-turn LLM analysis
 
 `incident_analyzer` builds one narrative from all events (labelled by source
 and aggregated up front) and runs a chain-of-thought where each turn feeds the
@@ -184,9 +166,9 @@ The full narrative + MITRE reference is sized to fit the model context window
 
 ---
 
-## 7. Input / Output
+## 6. Input / Output
 
-### 7.1 Inputs
+### 6.1 Inputs
 
 Log files are placed in a directory (default `./logs`). The current parsers
 recognise three sources by content shape:
@@ -202,14 +184,14 @@ exfiltration. Shared indicators (`203.0.113.45`, `198.51.100.200`,
 `10.0.0.55 / WEBSRV-01`, `svc_backup`) span the files, so cross-source
 correlation and the ~5-day attacker dwell time are demonstrable.
 
-### 7.2 Pre-flight gate
+### 6.2 Pre-flight gate
 
 Before any analysis, `preflight_check()` verifies in order: (1) the Ollama
 server is reachable, (2) the requested model is installed, (3) the model can
 actually generate. Any failure exits cleanly with an actionable message
 (e.g. `ollama pull <model>`) rather than crashing mid-run.
 
-### 7.3 Outputs
+### 6.3 Outputs
 
 The incident report carries a header (Incident ID, auto-derived classification,
 status, detection window, generated date) and an executive dashboard (threat
@@ -236,7 +218,7 @@ Reports are written to `./reports/` (configurable via `--output`/`--format`).
 
 ---
 
-## 8. Key Design Decisions and Trade-offs
+## 7. Key Design Decisions and Trade-offs
 
 | Decision | Rationale | Trade-off |
 |----------|-----------|-----------|
@@ -251,7 +233,7 @@ Reports are written to `./reports/` (configurable via `--output`/`--format`).
 
 ---
 
-## 9. Setup and Usage (summary)
+## 8. Setup and Usage (summary)
 
 ```bash
 # Prerequisites: Python 3, Ollama running with a model pulled
