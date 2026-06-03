@@ -2,8 +2,7 @@
 
 An AI-powered Security Operations Center (SOC) CoPilot that ingests security
 logs, summarizes alerts, maps activity to **MITRE ATT&CK** through LLM
-reasoning, assesses the threat, suggests triage steps, and generates a
-professional incident report — running entirely on a **local** model 
+reasoning, assesses the threat, suggests triage steps, and generates a incident report — running entirely on a **local** model 
 
 > See [`SPECIFICATION.md`](SPECIFICATION.md) for the full design specification.
 
