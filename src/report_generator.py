@@ -714,9 +714,15 @@ class BasicIncidentReport:
         else:
             parts.append('<p class="body"><em>No attack path reconstructed.</em></p>')
 
-        # 6. MITRE ATT&CK Mapping (evidence-grounded)
+        # 6. MITRE ATT&CK Mapping (evidence-grounded, from structured findings)
         parts.append('  <h2 class="section">MITRE ATT&amp;CK Mapping</h2>')
-        techs = d['mitre_techniques']
+        # Prefer structured findings; fall back to legacy mitre_techniques.
+        findings = d.get('findings') or []
+        techs = [{'id': f['technique_id'], 'name': f.get('technique_name', 'Unknown'),
+                  'tactic': f.get('tactic', 'N/A'), 'confidence': f['confidence'],
+                  'verified': f.get('verified', False), 'facts': f.get('facts', []),
+                  'inference': f.get('inference', ''), 'evidence_refs': f.get('evidence_refs', [])}
+                 for f in findings] or d.get('mitre_techniques', [])
         if not techs:
             parts.append('<p class="body"><em>No techniques identified.</em></p>')
         for t in techs:
