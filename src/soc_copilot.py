@@ -52,7 +52,7 @@ class SOCCoPilot:
         log.info("Grouped into %d alerts", len(alerts))
 
         # Phase 3: Intelligent analysis
-        log.info("Running LLM analysis (model=%s)", self.llm_client.model)
+        log.info("Running LLM analysis...")
         incident_analysis = self.incident_analyzer.analyze(events, alerts)
         if incident_analysis.injection_attempts:
             log.warning("Neutralized %d prompt-injection attempt(s) in log content",
