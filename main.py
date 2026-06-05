@@ -3,6 +3,9 @@
 import argparse
 import os
 import sys
+
+from src.config import load_config
+from src.logging_setup import setup_logging
 from src.soc_copilot import SOCCoPilot
 
 # Default directory for all generated reports.
@@ -31,17 +34,33 @@ def main():
     parser = argparse.ArgumentParser(
         description='AI SOC CoPilot - Intelligent Security Incident Analysis'
     )
+    # CLI flags default to None so config.yaml provides the value unless overridden.
+    parser.add_argument('--config', default='config.yaml', help='Config file (default: config.yaml)')
     parser.add_argument('--log-dir', default='./logs', help='Log directory (default: ./logs)')
-    parser.add_argument('--model', default='llama2', help='Ollama model (default: llama2)')
-    parser.add_argument('--output', help='Output file (JSON, TXT, or use --format both)')
-    parser.add_argument('--format', choices=['json', 'txt', 'html', 'both'], default='txt', help='Output format (default: txt)')
-    parser.add_argument('--ollama-url', default='http://localhost:11434', help='Ollama URL')
+    parser.add_argument('--model', help='Ollama model (overrides config)')
+    parser.add_argument('--output', help='Output file (bare names land in reports/)')
+    parser.add_argument('--format', choices=['json', 'txt', 'html', 'both'], help='Output format')
+    parser.add_argument('--ollama-url', help='Ollama URL (overrides config)')
+    parser.add_argument('--log-level', help='Log level: DEBUG|INFO|WARNING|ERROR')
+    parser.add_argument('--log-format', choices=['text', 'json'], help='Log format')
     parser.add_argument('--explain', action='store_true', help='Show detailed reasoning')
 
     args = parser.parse_args()
 
-    # Initialize CoPilot
-    copilot = SOCCoPilot(ollama_url=args.ollama_url, model=args.model)
+    # Load layered config (defaults -> config.yaml -> env), then apply CLI flags.
+    cfg = load_config(args.config)
+    model = args.model or cfg.llm.model
+    ollama_url = args.ollama_url or cfg.llm.base_url
+    out_format = args.format or cfg.report.default_format
+    setup_logging(args.log_level or cfg.logging.level, args.log_format or cfg.logging.format)
+
+    # Initialize CoPilot from config.
+    copilot = SOCCoPilot(
+        ollama_url=ollama_url, model=model,
+        timeout=cfg.llm.timeout, num_ctx=cfg.llm.num_ctx,
+        alert_window_minutes=cfg.analysis.alert_time_window_minutes,
+        correlation_window_minutes=cfg.analysis.correlation_window_minutes,
+    )
 
     # Hard pre-flight check: this tool is AI-assisted only and requires a
     # working local model. Fail loudly here rather than crashing mid-analysis.
@@ -63,11 +82,11 @@ def main():
 
         if args.output:
             output_path = resolve_output_path(args.output)
-            if args.format == 'both':
+            if out_format == 'both':
                 report.save_both(output_path)
-            elif args.format == 'html' or output_path.endswith('.html'):
+            elif out_format == 'html' or output_path.endswith('.html'):
                 report.save_html(output_path)
-            elif args.format == 'json' or output_path.endswith('.json'):
+            elif out_format == 'json' or output_path.endswith('.json'):
                 report.save_json(output_path)
             else:  # txt
                 report.save_txt(output_path)

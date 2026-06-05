@@ -1,0 +1,26 @@
+{
+  "value": [
+    {
+      "alertId": "da637-0001",
+      "alertCreationTime": "2026-06-01T22:35:40Z",
+      "title": "Suspicious PowerShell encoded command",
+      "severity": "High",
+      "category": "Execution",
+      "detectionSource": "WindowsDefenderAtp",
+      "machineId": "DC1",
+      "description": "An encoded PowerShell command was launched by services.exe, consistent with payload execution.",
+      "evidence": [{"entityType": "Process", "processCommandLine": "powershell.exe -enc SQBFAFgA"}]
+    },
+    {
+      "alertId": "da637-0002",
+      "alertCreationTime": "2026-06-02T02:12:10Z",
+      "title": "Ransomware-linked shadow copy deletion",
+      "severity": "Critical",
+      "category": "Impact",
+      "detectionSource": "WindowsDefenderAtp",
+      "machineId": "DC1",
+      "description": "vssadmin was used to delete volume shadow copies, a common precursor to ransomware deployment.",
+      "evidence": [{"entityType": "Process", "processCommandLine": "vssadmin.exe delete shadows /all /quiet"}]
+    }
+  ]
+}

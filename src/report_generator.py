@@ -1,9 +1,10 @@
+import html as html_lib
 import json
 import re
-import html as html_lib
-from typing import List, Dict, Optional
 from datetime import datetime
-from src.log_parser import SecurityEvent
+from typing import List
+
+from src.attack_graph import build_attack_graph
 
 
 class BasicIncidentReport:
@@ -40,12 +41,16 @@ class BasicIncidentReport:
             # INDICATORS OF COMPROMISE
             'iocs': self._extract_iocs(),
 
+            # ATTACK PATH / ENTITY GRAPH (deterministic kill-chain reconstruction)
+            'attack_graph': build_attack_graph(self.events),
+
             # INCIDENT OVERVIEW (LLM narrative)
             'overview': self.analysis.get('initial_analysis', ''),
 
             # EVENT TIMELINE
             'timeline': [
                 {
+                    'ref': getattr(event, 'ref', ''),
                     # Use the normalized datetime so every row shares one
                     # clean format; fall back to the raw string if unparsed.
                     'time': (event.dt.strftime('%Y-%m-%d %H:%M:%S')
@@ -56,6 +61,9 @@ class BasicIncidentReport:
                 }
                 for event in self.events
             ],
+
+            # Structured, evidence-cited recommendations (Feature 1).
+            'recommendations': self.analysis.get('recommendations', []),
 
             # ALERTS
             'alerts': self.alerts,
@@ -224,10 +232,10 @@ class BasicIncidentReport:
         json_file = base_filename if base_filename.endswith('.json') else base_filename.replace('.txt', '.json')
         txt_file = base_filename if base_filename.endswith('.txt') else base_filename.replace('.json', '.txt')
 
-        print(f"Saving comprehensive reports...")
+        print("Saving comprehensive reports...")
         self.save_json(json_file)
         self.save_txt(txt_file)
-        print(f"\nBoth formats saved with FULL information:")
+        print("\nBoth formats saved with FULL information:")
         print(f"  JSON: {json_file}")
         print(f"  TXT:  {txt_file}")
 
@@ -346,6 +354,42 @@ class BasicIncidentReport:
         .chip.warn {{ border-color: #b00020; color: #b00020; }}
         .tech .reason {{ font-size: .85rem; color: #333; }}
         .tech .reason b {{ color: var(--ink); }}
+        .fi {{ font-size: .85rem; margin-top: .5rem; }}
+        .fi-k {{ font-weight: 700; color: var(--ink); }}
+        .fi ul {{ margin: .2rem 0 .2rem 1.15rem; }}
+        .evref {{ font-family: "SF Mono", Consolas, monospace; font-weight: 700; }}
+        ul.evidence {{ list-style: none; margin: .3rem 0 .2rem; padding-left: 0;
+                       font-size: .8rem; }}
+        ul.evidence li {{ padding: .28rem 0; border-bottom: 1px dotted var(--hair); }}
+        ul.evidence .evref {{ background: var(--ink); color: #fff; padding: 0 .32rem;
+                              border-radius: 2px; font-size: .72rem; margin-right: .35rem; }}
+        .rec {{ border: 1px solid var(--hair); border-left: 4px solid var(--ink);
+                padding: .7rem 1rem; margin: 0 0 .7rem; }}
+        .rec-hd {{ display: flex; align-items: center; gap: .6rem; margin-bottom: .25rem; }}
+        .rec-action {{ font-weight: 600; }}
+        .entities {{ margin: 0 0 1rem; }}
+        .ent-row {{ margin-bottom: .35rem; font-size: .82rem; }}
+        .ent-k {{ display: inline-block; min-width: 6.5rem; color: var(--muted);
+                  font-weight: 600; }}
+        .ent {{ display: inline-block; font-family: "SF Mono", Consolas, monospace;
+                font-size: .74rem; padding: .08rem .45rem; border-radius: 3px;
+                margin: .1rem .2rem .1rem 0; border: 1px solid var(--ink); }}
+        .ent-attacker {{ background: #b00020; color: #fff; border-color: #b00020; }}
+        .ent-c2 {{ background: #d35400; color: #fff; border-color: #d35400; }}
+        .ent-host {{ background: var(--soft); }}
+        .ent-acct {{ background: #fff; }}
+        ol.attack-path {{ list-style: none; margin: 0; padding-left: 0;
+                          border-left: 2px solid var(--ink); }}
+        ol.attack-path .step {{ position: relative; padding: 0 0 .9rem 1.1rem; }}
+        ol.attack-path .step::before {{ content: "\\25B8"; position: absolute; left: -.62rem;
+                                        top: 0; background: var(--paper); color: var(--ink);
+                                        font-size: .8rem; }}
+        .step-hd {{ display: flex; align-items: center; gap: .55rem; }}
+        .step-stage {{ font-weight: 700; font-size: .92rem; }}
+        .step-detail {{ font-size: .8rem; color: #333; margin: .15rem 0; }}
+        .step-ev .evref {{ background: var(--ink); color: #fff; padding: 0 .3rem;
+                           border-radius: 2px; font-size: .68rem; margin-right: .25rem;
+                           font-family: "SF Mono", Consolas, monospace; }}
         .meter {{ height: 12px; background: #eee; border: 1px solid var(--ink);
                   border-radius: 2px; overflow: hidden; margin-top: .5rem; }}
         .meter > span {{ display: block; height: 100%; }}
@@ -389,8 +433,10 @@ class BasicIncidentReport:
         text = re.sub(r'[ \t]+', ' ', text)
 
         # Put each labelled section / list item on its own line.
-        # 1) "Label-001:" headers (after sentence punctuation or at the start)
-        text = re.sub(r'(?:(?<=[.:!?])\s+|^)([A-Z][A-Za-z]{1,15}[-\s]?\d{1,4}\s*:)',
+        # 1) "Label-001:" headers — fire after ':', '!', '?', or a sentence
+        #    period (a lowercase letter then '.'), but NOT after a list number
+        #    like "1." (digit then '.'), which would orphan the number.
+        text = re.sub(r'(?:(?<=[:!?])\s+|(?<=[a-z]\.)\s+|^)([A-Z][A-Za-z]{1,15}[-\s]?\d{1,4}\s*:)',
                       r'\n\1', text)
         # 2) numbered items ("1. ", "12. ")
         text = re.sub(r'(?:(?<=[.:!?])\s+|^)(\d{1,2}\.\s+)', r'\n\1', text)
@@ -468,6 +514,34 @@ class BasicIncidentReport:
             return '<p class="body"><em>No data returned.</em></p>'
         return self._render_tokens(tokens)
 
+    def _evidence_index(self) -> dict:
+        """Map each EVT ref to a short descriptor, for citing evidence."""
+        idx = {}
+        for e in self.events:
+            ts = e.dt.strftime('%Y-%m-%d %H:%M:%S') if getattr(e, 'dt', None) else e.timestamp
+            idx[getattr(e, 'ref', '')] = {
+                'time': ts, 'source': e.source, 'type': e.event_type,
+                'description': e.description,
+            }
+        return idx
+
+    def _render_evidence_html(self, refs: list, idx: dict) -> str:
+        """Render cited evidence as a compact list of the referenced events."""
+        if not refs:
+            return ''
+        items = []
+        for r in refs:
+            ev = idx.get(r)
+            if ev:
+                items.append(
+                    f"    <li><span class='evref'>{self._esc(r)}</span> "
+                    f"<span class='mono'>{self._esc(ev['time'])}</span> · "
+                    f"{self._esc(ev['source'])} · {self._esc(ev['type'])} — "
+                    f"{self._esc(ev['description'])}</li>")
+            else:
+                items.append(f"    <li><span class='evref'>{self._esc(r)}</span></li>")
+        return "  <ul class='evidence'>\n" + "\n".join(items) + "\n  </ul>"
+
     def to_html(self) -> str:
         """Render the full incident report as a self-contained HTML document."""
         d = self.to_dict()
@@ -480,6 +554,9 @@ class BasicIncidentReport:
         # Readable timestamp: "2026-06-02T15:16:57.97Z" -> "2026-06-02 15:16:57 UTC"
         ts = str(d['timestamp'])
         ts_display = ts.replace('T', ' ').split('.')[0] + ' UTC' if 'T' in ts else ts
+
+        # Evidence index: EVT ref -> event, for citing in findings/recommendations.
+        ev_idx = self._evidence_index()
 
         # Dashboard stats.
         n_events = len(d['timeline'])
@@ -556,7 +633,8 @@ class BasicIncidentReport:
         # 2. Event Timeline
         parts.append('  <h2 class="section">Event Timeline</h2>')
         rows = "\n".join(
-            f"      <tr><td class='mono'>{self._esc(e['time'][:19])}</td>"
+            f"      <tr><td class='mono evref'>{self._esc(e.get('ref',''))}</td>"
+            f"<td class='mono'>{self._esc(e['time'][:19])}</td>"
             f"<td>{self._esc(e['source'])}</td>"
             f"<td class='mono'>{self._esc(e['type'])}</td>"
             f"<td>{self._esc(e['description'])}</td></tr>"
@@ -564,7 +642,7 @@ class BasicIncidentReport:
         )
         parts.append(
             "  <table>\n"
-            "    <thead><tr><th>Timestamp</th><th>Source</th><th>Event Type</th><th>Description</th></tr></thead>\n"
+            "    <thead><tr><th>Ref</th><th>Timestamp</th><th>Source</th><th>Event Type</th><th>Description</th></tr></thead>\n"
             f"    <tbody>\n{rows}\n    </tbody>\n  </table>"
         )
 
@@ -603,7 +681,40 @@ class BasicIncidentReport:
         else:
             parts.append('<p class="body"><em>No internal assets identified.</em></p>')
 
-        # 5. MITRE ATT&CK Mapping
+        # 5. Attack Path / Entity Graph (deterministic kill-chain view)
+        parts.append('  <h2 class="section">Attack Path</h2>')
+        g = d['attack_graph']
+        ent = g['entities']
+        ent_chips = ""
+        for label, key, cls in [("Attacker", "attacker", "ent-attacker"),
+                                 ("C2", "c2", "ent-c2"),
+                                 ("Compromised", "compromised", "ent-host"),
+                                 ("Accounts", "accounts", "ent-acct")]:
+            vals = ent.get(key) or []
+            if vals:
+                chips = " ".join(f"<span class='ent {cls}'>{self._esc(v)}</span>" for v in vals)
+                ent_chips += f"<div class='ent-row'><span class='ent-k'>{label}</span> {chips}</div>"
+        if ent_chips:
+            parts.append(f"  <div class='entities'>{ent_chips}</div>")
+
+        if g['stages']:
+            steps = ""
+            for s in g['stages']:
+                ssev = self._sev(s['severity'])
+                refs = " ".join(f"<span class='evref'>{self._esc(r)}</span>"
+                                for r in s['refs'][:6])
+                more = f" +{len(s['refs']) - 6}" if len(s['refs']) > 6 else ""
+                steps += f"""    <li class="step">
+      <div class="step-hd"><span class="step-stage">{self._esc(s['stage'])}</span>
+        <span class="badge sev-{ssev}">{self._esc(s['severity'])}</span></div>
+      <div class="step-detail">{self._esc(s['detail'])}</div>
+      <div class="step-ev">{refs}{more}</div>
+    </li>\n"""
+            parts.append(f"  <ol class='attack-path'>\n{steps}  </ol>")
+        else:
+            parts.append('<p class="body"><em>No attack path reconstructed.</em></p>')
+
+        # 6. MITRE ATT&CK Mapping (evidence-grounded)
         parts.append('  <h2 class="section">MITRE ATT&amp;CK Mapping</h2>')
         techs = d['mitre_techniques']
         if not techs:
@@ -612,26 +723,63 @@ class BasicIncidentReport:
             if not isinstance(t, dict):
                 continue
             verified = t.get('verified', False)
-            # Only flag the problem case; verified is the expected default.
             status_chip = ('' if verified else
                            '<span class="chip warn">&#9888; unverified ID</span>')
+            conf = t.get('confidence', 'N/A')
+            conf_str = (f"{int(round(float(conf) * 100))}%"
+                        if isinstance(conf, (int, float)) else self._esc(conf))
+
+            blocks = ""
+            facts = t.get('facts') or []
+            if facts:
+                fitems = "".join(f"<li>{self._esc(x)}</li>" for x in facts)
+                blocks += (f"<div class='fi'><span class='fi-k'>Facts (observed):</span>"
+                           f"<ul>{fitems}</ul></div>")
+            if t.get('inference'):
+                blocks += (f"<div class='fi'><span class='fi-k'>Inference:</span> "
+                           f"{self._esc(t['inference'])}</div>")
+            elif t.get('reasoning'):
+                blocks += (f"<div class='fi'><span class='fi-k'>Reasoning:</span> "
+                           f"{self._esc(t['reasoning'])}</div>")
+            if t.get('evidence_refs'):
+                blocks += ("<div class='fi'><span class='fi-k'>Evidence:</span></div>"
+                           + self._render_evidence_html(t['evidence_refs'], ev_idx))
+
             parts.append(f"""  <div class="tech">
     <div class="hd"><span class="tid">[{self._esc(t.get('id', '?'))}]</span> {self._esc(t.get('name', 'Unknown'))}</div>
     <div class="tags">
       <span class="chip">{self._esc(t.get('tactic', 'N/A'))}</span>
-      <span class="chip muted">Confidence: {self._esc(t.get('confidence', 'N/A'))}</span>
+      <span class="chip muted">Confidence: {conf_str}</span>
       {status_chip}
     </div>
-    <div class="reason"><b>Reasoning:</b> {self._esc(t.get('reasoning', 'N/A'))}</div>
+    {blocks}
   </div>""")
 
         # 6. Impact / Threat Assessment
         parts.append('  <h2 class="section">Impact / Threat Assessment</h2>')
         parts.append(self._format_rich_text(d['threat_assessment']))
 
-        # 7. Recommendations
+        # 7. Recommendations (evidence-grounded when available)
         parts.append('  <h2 class="section">Recommendations</h2>')
-        if d['actions']:
+        recs = d.get('recommendations') or []
+        if recs:
+            for r in recs:
+                pri = self._sev(r.get('priority', 'medium'))
+                pri = pri if pri in self._SEV_COLORS else 'unknown'
+                rationale = (f"<div class='fi'><span class='fi-k'>Rationale:</span> "
+                             f"{self._esc(r['rationale'])}</div>") if r.get('rationale') else ""
+                refs = r.get('evidence_refs', [])
+                ev_block = (f"<div class='fi'><span class='fi-k'>Evidence:</span></div>\n    "
+                            f"{self._render_evidence_html(refs, ev_idx)}") if refs else ""
+                parts.append(f"""  <div class="rec">
+    <div class="rec-hd">
+      <span class="badge sev-{pri}">{self._esc(r.get('priority', 'medium'))}</span>
+      <span class="rec-action">{self._esc(r.get('action', ''))}</span>
+    </div>
+    {rationale}
+    {ev_block}
+  </div>""")
+        elif d['actions']:
             items = "\n".join(f"    <li>{self._esc(a)}</li>" for a in d['actions'])
             parts.append(f'  <ol class="actions">\n{items}\n  </ol>')
         else:
@@ -671,7 +819,7 @@ class BasicIncidentReport:
         lines.append("")
         lines.append("╔" + "═" * 78 + "╗")
         lines.append("║" + f"INCIDENT REPORT: {self.incident_id}".center(78) + "║")
-        lines.append("║" + f"AI SOC CoPilot Analysis".center(78) + "║")
+        lines.append("║" + "AI SOC CoPilot Analysis".center(78) + "║")
         lines.append("╚" + "═" * 78 + "╝")
         lines.append("")
 
@@ -810,7 +958,7 @@ class BasicIncidentReport:
         lines.append("")
         lines.append("╔" + "═" * 78 + "╗")
         lines.append("║" + f"INCIDENT REPORT: {self.incident_id}".center(78) + "║")
-        lines.append("║" + f"AI SOC CoPilot Analysis".center(78) + "║")
+        lines.append("║" + "AI SOC CoPilot Analysis".center(78) + "║")
         lines.append("╚" + "═" * 78 + "╝")
         lines.append("")
 

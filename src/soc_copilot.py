@@ -1,10 +1,14 @@
 import re
-from src.log_parser import LogParser
-from src.llm_client import OllamaClient
+
 from src.alert_summarizer import AlertSummarizer
-from src.incident_analyzer import IncidentAnalyzer
 from src.correlation_analyzer import CorrelationAnalyzer
+from src.incident_analyzer import IncidentAnalyzer
+from src.llm_client import OllamaClient
+from src.log_parser import LogParser
+from src.logging_setup import get_logger
 from src.report_generator import BasicIncidentReport
+
+log = get_logger("soc.copilot")
 
 
 class SOCCoPilot:
@@ -19,30 +23,40 @@ class SOCCoPilot:
     - Actionable recommendations
     """
 
-    def __init__(self, ollama_url: str = "http://localhost:11434", model: str = "llama2"):
+    def __init__(self, ollama_url: str = "http://localhost:11434", model: str = "llama2",
+                 timeout: int = 120, num_ctx: int = 4096,
+                 alert_window_minutes: int = 5, correlation_window_minutes: int = 60):
         """Initialize SOC CoPilot with LLM connection."""
-        self.llm_client = OllamaClient(base_url=ollama_url, model=model)
+        self.llm_client = OllamaClient(base_url=ollama_url, model=model,
+                                       timeout=timeout, num_ctx=num_ctx)
         self.log_parser = LogParser()
-        self.alert_summarizer = AlertSummarizer(self.llm_client)
+        self.alert_summarizer = AlertSummarizer(self.llm_client, alert_window_minutes)
         self.incident_analyzer = IncidentAnalyzer(self.llm_client)
-        self.correlation_analyzer = CorrelationAnalyzer(self.llm_client)
+        self.correlation_analyzer = CorrelationAnalyzer(self.llm_client, correlation_window_minutes)
 
     def analyze_logs(self, log_dir: str = "./logs") -> dict:
         """Perform complete intelligent incident analysis."""
-        print("Analyzing logs...")
+        log.info("Parsing logs from %s", log_dir)
 
         # Phase 1: Parse logs
         events = self.log_parser.parse_logs(log_dir)
         if not events:
+            log.warning("No events parsed from %s", log_dir)
             return {}
+        log.info("Parsed %d events across %d sources", len(events),
+                 len({e.log_source for e in events}))
 
         # Phase 2: Group into alerts
         alerts = self.alert_summarizer.group_events(events)
         alerts = self.alert_summarizer.summarize_alerts(alerts)
+        log.info("Grouped into %d alerts", len(alerts))
 
         # Phase 3: Intelligent analysis
-        print("Running LLM analysis...")
+        log.info("Running LLM analysis (model=%s)", self.llm_client.model)
         incident_analysis = self.incident_analyzer.analyze(events, alerts)
+        if incident_analysis.injection_attempts:
+            log.warning("Neutralized %d prompt-injection attempt(s) in log content",
+                        len(incident_analysis.injection_attempts))
 
         # Phase 4: Correlation analysis
         correlations = self.correlation_analyzer.correlate_events(alerts)

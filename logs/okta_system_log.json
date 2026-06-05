@@ -1,0 +1,30 @@
+[
+  {
+    "published": "2026-05-31T15:28:11.000Z",
+    "eventType": "user.session.start",
+    "displayMessage": "User login to Okta",
+    "severity": "WARN",
+    "actor": {"alternateId": "administrator@corp.example", "displayName": "Administrator"},
+    "client": {"ipAddress": "203.0.113.45", "geographicalContext": {"country": "Unknown"}},
+    "outcome": {"result": "SUCCESS"}
+  },
+  {
+    "published": "2026-05-31T15:29:02.000Z",
+    "eventType": "user.mfa.factor.deactivate",
+    "displayMessage": "Deactivate factor for user",
+    "severity": "WARN",
+    "actor": {"alternateId": "administrator@corp.example", "displayName": "Administrator"},
+    "client": {"ipAddress": "203.0.113.45"},
+    "outcome": {"result": "SUCCESS"}
+  },
+  {
+    "published": "2026-06-01T22:40:18.000Z",
+    "eventType": "application.user_membership.add",
+    "displayMessage": "Add user to application membership",
+    "severity": "INFO",
+    "actor": {"alternateId": "administrator@corp.example", "displayName": "Administrator"},
+    "client": {"ipAddress": "10.0.0.55"},
+    "target": [{"alternateId": "svc_backup@corp.example", "displayName": "svc_backup"}],
+    "outcome": {"result": "SUCCESS"}
+  }
+]

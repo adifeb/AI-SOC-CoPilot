@@ -1,6 +1,8 @@
-import requests
 import json
-from typing import Optional, Dict, List
+import re
+from typing import Dict, Optional
+
+import requests
 
 
 class OllamaClient:
@@ -19,7 +21,7 @@ class OllamaClient:
         try:
             response = requests.get(f"{self.base_url}/api/tags", timeout=5)
             return response.status_code == 200
-        except:
+        except Exception:
             return False
 
     def preflight_check(self) -> tuple:
@@ -106,6 +108,42 @@ class OllamaClient:
             return None
         except Exception as e:
             print(f"Error calling Ollama: {e}")
+            return None
+
+    def generate_json(self, prompt: str) -> Optional[dict]:
+        """Generate a JSON object using Ollama's structured-output mode.
+
+        Uses ``"format": "json"`` so the model is constrained to emit valid
+        JSON. Returns the parsed dict, or None on failure.
+        """
+        try:
+            response = requests.post(
+                f"{self.base_url}/api/generate",
+                json={
+                    "model": self.model,
+                    "prompt": prompt,
+                    "stream": False,
+                    "format": "json",
+                    "options": {"num_ctx": self.num_ctx, "temperature": 0.2},
+                },
+                timeout=self.timeout,
+            )
+            if response.status_code != 200:
+                print(f"Error from Ollama: {response.status_code}")
+                return None
+            raw = response.json().get("response", "").strip()
+            try:
+                return json.loads(raw)
+            except json.JSONDecodeError:
+                m = re.search(r'\{.*\}', raw, re.S)
+                if m:
+                    try:
+                        return json.loads(m.group(0))
+                    except json.JSONDecodeError:
+                        return None
+                return None
+        except Exception as e:
+            print(f"Error calling Ollama (json): {e}")
             return None
 
     def multi_turn_analysis(self, incident_context: str, mitre_reference: str = "") -> Dict[str, str]:

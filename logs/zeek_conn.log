@@ -1,0 +1,8 @@
+#separator \x09
+#set_separator	,
+#path	conn
+#fields	ts	uid	id.orig_h	id.orig_p	id.resp_h	id.resp_p	proto	service	duration	orig_bytes	resp_bytes	conn_state
+#types	time	string	addr	port	addr	port	enum	string	interval	count	count	string
+1780201518.301	CwjyU1aBcd	10.0.0.55	49210	198.51.100.200	80	tcp	http	302.5	2048	512	SF
+1780365955.110	CkpQr2EfGh	10.0.0.55	49555	198.51.100.200	443	tcp	ssl	88.3	10485760	4096	SF
+1780222530.700	CmnoP3IjKl	203.0.113.45	54120	10.0.0.55	22	tcp	-	0.4	0	0	REJ

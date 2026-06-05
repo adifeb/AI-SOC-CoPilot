@@ -1,7 +1,7 @@
-from typing import List, Dict
 from datetime import datetime, timedelta
+from typing import List
+
 from src.alert_summarizer import Alert
-from src.log_parser import SecurityEvent
 from src.llm_client import OllamaClient
 
 

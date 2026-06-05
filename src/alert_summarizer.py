@@ -1,7 +1,7 @@
-from typing import List, Dict
-from datetime import datetime, timedelta
+from datetime import timedelta
+from typing import Dict, List
+
 from src.log_parser import SecurityEvent
-from src.llm_client import OllamaClient
 
 
 class Alert:
@@ -30,7 +30,8 @@ class Alert:
 
 
 class AlertSummarizer:
-    def __init__(self, llm_client: OllamaClient, time_window_minutes: int = 5):
+    def __init__(self, llm_client, time_window_minutes: int = 5):
+        # llm_client: OllamaClient or FakeLLMClient (anything with summarize_event)
         self.llm_client = llm_client
         self.time_window = timedelta(minutes=time_window_minutes)
 
@@ -53,7 +54,7 @@ class AlertSummarizer:
 
         # Create alerts from grouped events
         alert_counter = 1
-        for group_key, group_events in event_groups.items():
+        for _group_key, group_events in event_groups.items():
             alert = Alert(
                 alert_id=f"ALERT-{str(alert_counter).zfill(3)}",
                 events=group_events

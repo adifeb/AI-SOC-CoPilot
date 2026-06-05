@@ -1,0 +1,32 @@
+{
+  "Records": [
+    {
+      "eventTime": "2026-06-01T09:14:05Z",
+      "eventSource": "signin.amazonaws.com",
+      "eventName": "ConsoleLogin",
+      "awsRegion": "us-east-1",
+      "sourceIPAddress": "203.0.113.45",
+      "userIdentity": {"type": "IAMUser", "userName": "svc_backup"},
+      "responseElements": {"ConsoleLogin": "Success"},
+      "additionalEventData": {"MFAUsed": "No"}
+    },
+    {
+      "eventTime": "2026-06-01T09:21:40Z",
+      "eventSource": "secretsmanager.amazonaws.com",
+      "eventName": "GetSecretValue",
+      "awsRegion": "us-east-1",
+      "sourceIPAddress": "203.0.113.45",
+      "userIdentity": {"type": "IAMUser", "userName": "svc_backup"},
+      "requestParameters": {"secretId": "prod/db/master-credentials"}
+    },
+    {
+      "eventTime": "2026-06-02T02:30:12Z",
+      "eventSource": "s3.amazonaws.com",
+      "eventName": "PutObject",
+      "awsRegion": "us-east-1",
+      "sourceIPAddress": "10.0.0.55",
+      "userIdentity": {"type": "IAMUser", "userName": "svc_backup"},
+      "requestParameters": {"bucketName": "exfil-staging-198", "key": "shadow.tar.gz"}
+    }
+  ]
+}

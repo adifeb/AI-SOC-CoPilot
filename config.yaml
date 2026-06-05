@@ -1,0 +1,21 @@
+# AI SOC CoPilot configuration.
+# CLI flags override these values; environment is read by config.py.
+
+llm:
+  provider: ollama            # local Ollama only
+  model: llama2
+  base_url: http://localhost:11434
+  timeout: 120
+  num_ctx: 4096               # context window; sized so the full incident fits
+
+analysis:
+  alert_time_window_minutes: 5
+  correlation_window_minutes: 60
+
+logging:
+  level: INFO                 # DEBUG | INFO | WARNING | ERROR
+  format: text               # text | json (structured)
+
+report:
+  default_format: txt        # json | txt | html | both
+  output_dir: reports
