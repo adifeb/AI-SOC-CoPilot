@@ -101,7 +101,8 @@ class OllamaClient:
                 print(f"Error from Ollama: {response.status_code}")
                 return None
         except requests.exceptions.Timeout:
-            print(f"Timeout connecting to Ollama (model: {self.model}). Try increasing timeout.")
+            import logging
+            logging.getLogger("soc").warning(f"Timeout connecting to Ollama (model: {self.model}). Try increasing timeout.")
             return None
         except requests.exceptions.ConnectionError:
             print(f"Cannot connect to Ollama at {self.base_url}. Is it running?")
@@ -148,6 +149,8 @@ class OllamaClient:
 
     def multi_turn_analysis(self, incident_context: str, mitre_reference: str = "") -> Dict[str, str]:
         """Multi-turn incident analysis with chain-of-thought reasoning."""
+        import logging
+        log = logging.getLogger("soc")
         results = {}
 
         # Turn 1: Initial Analysis
@@ -164,6 +167,7 @@ INCIDENT EVENTS:
 Provide your analysis:"""
         analysis = self.generate(prompt1)
         results['initial_analysis'] = analysis
+        log.info("Turn 1 (Initial Analysis): %s", "OK" if analysis else "TIMEOUT/ERROR")
         if not analysis:
             return results
 
@@ -178,6 +182,9 @@ What's the attack progression or kill chain?
 Attack correlations:"""
         correlation = self.generate(prompt2)
         results['correlations'] = correlation
+        log.info("Turn 2 (Event Correlation): %s", "OK" if correlation else "TIMEOUT/ERROR")
+        if not correlation:
+            return results
 
         # Turn 3: MITRE Mapping with Understanding
         mitre_context = f"\n\nMITRE ATT&CK Reference:\n{mitre_reference}" if mitre_reference else ""
@@ -205,6 +212,9 @@ Format each as:
 MITRE Mappings:"""
         mitre_mapping = self.generate(prompt3)
         results['mitre_reasoning'] = mitre_mapping
+        log.info("Turn 3 (MITRE Mapping): %s", "OK" if mitre_mapping else "TIMEOUT/ERROR")
+        if not mitre_mapping:
+            return results
 
         # Turn 4: Threat Assessment
         prompt4 = f"""Based on this incident:
@@ -219,6 +229,9 @@ Explain your reasoning. What's the business impact if not stopped?
 Threat Assessment:"""
         threat = self.generate(prompt4)
         results['threat_assessment'] = threat
+        log.info("Turn 4 (Threat Assessment): %s", "OK" if threat else "TIMEOUT/ERROR")
+        if not threat:
+            return results
 
         # Turn 5: Prioritized Recommendations
         prompt5 = f"""Based on this incident assessment:
@@ -235,6 +248,7 @@ Format as:
 Prioritized Actions:"""
         recommendations = self.generate(prompt5)
         results['prioritized_actions'] = recommendations
+        log.info("Turn 5 (Prioritized Actions): %s", "OK" if recommendations else "TIMEOUT/ERROR")
 
         return results
 

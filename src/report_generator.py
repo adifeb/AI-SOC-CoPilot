@@ -1146,6 +1146,8 @@ class BasicIncidentReport:
 
     def _clean_text(self, text: str) -> str:
         """Clean up verbose LLM output."""
+        if not text:
+            return ""
         # Remove excessive whitespace and newlines
         text = ' '.join(text.split())
         # Remove numbered lists formatting if exists

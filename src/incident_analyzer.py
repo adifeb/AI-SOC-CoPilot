@@ -137,11 +137,11 @@ class IncidentAnalyzer:
 
         # Multi-turn narrative analysis
         results = self.llm_client.multi_turn_analysis(incident_context, mitre_ref)
-        analysis.initial_analysis = results.get('initial_analysis', '') or ''
-        analysis.correlations = results.get('correlations', '') or ''
-        analysis.mitre_reasoning = results.get('mitre_reasoning', '') or ''
-        analysis.threat_assessment = results.get('threat_assessment', '') or ''
-        analysis.prioritized_actions = results.get('prioritized_actions', '') or ''
+        analysis.initial_analysis = results.get('initial_analysis', '')
+        analysis.correlations = results.get('correlations', '')
+        analysis.mitre_reasoning = results.get('mitre_reasoning', '')
+        analysis.threat_assessment = results.get('threat_assessment', '')
+        analysis.prioritized_actions = results.get('prioritized_actions', '')
         analysis.threat_level = self._extract_threat_level(analysis.threat_assessment)
 
         # Evidence-grounded structured findings (primary path): each MITRE
